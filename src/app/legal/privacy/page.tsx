@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
-import { COMPANY, SERVICE } from "@/lib/company";
+import { COMPANY, SERVICE, SUB_PROCESSORS } from "@/lib/company";
 
 export const metadata: Metadata = {
   title: `プライバシーポリシー | ${SERVICE.name}`,
@@ -71,7 +72,7 @@ export default function PrivacyPolicyPage() {
           </p>
         </Section>
 
-        <Section title="第4条 (第三者提供)">
+        <Section title="第4条 (第三者提供・サブプロセッサー)">
           <p>
             当社は、次の場合を除き、お客様の個人情報を第三者に提供することはありません。
           </p>
@@ -82,9 +83,46 @@ export default function PrivacyPolicyPage() {
               人の生命、身体または財産の保護のために必要があり、お客様の同意取得が困難な場合
             </li>
             <li>
-              本サービスの運営に必要な業務委託先 (クラウドインフラ、決済代行、AI プロバイダ、メール配信、解析等) に、利用目的の達成に必要な範囲で開示する場合
+              本サービスの運営に必要な業務委託先 (サブプロセッサー) に、利用目的の達成に必要な範囲で開示する場合
             </li>
           </ul>
+          <p className="mt-3">
+            本サービスが利用しているサブプロセッサーは以下のとおりです。最新の一覧および追加・変更については
+            <Link
+              href="/security"
+              className="mx-1 underline underline-offset-2 hover:text-foreground"
+            >
+              セキュリティページ
+            </Link>
+            にて随時公開します。
+          </p>
+          <div className="mt-3 overflow-hidden rounded-xl border border-border">
+            <table className="w-full text-xs">
+              <thead className="border-b border-border bg-muted/40">
+                <tr className="text-left">
+                  <th className="px-3 py-2 font-medium">事業者</th>
+                  <th className="px-3 py-2 font-medium">利用目的</th>
+                  <th className="px-3 py-2 font-medium">処理地域</th>
+                </tr>
+              </thead>
+              <tbody>
+                {SUB_PROCESSORS.map((p) => (
+                  <tr
+                    key={p.name}
+                    className="border-b border-border last:border-0"
+                  >
+                    <td className="px-3 py-2 font-medium">{p.name}</td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {p.purpose}
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {p.region}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Section>
 
         <Section title="第5条 (Cookie の利用)">

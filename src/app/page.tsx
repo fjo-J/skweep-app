@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { PricingButton } from "@/components/pricing-button";
+import { cn } from "@/lib/utils";
+import { COMPANY } from "@/lib/company";
 import {
   ArrowRight,
   Upload,
@@ -8,6 +10,7 @@ import {
   LayoutDashboard,
   Check,
   Lock,
+  ShieldCheck,
   TrendingUp,
   Briefcase,
   Factory,
@@ -313,11 +316,12 @@ export default function HomePage() {
               料金プラン
             </h2>
             <p className="mt-4 text-muted-foreground">
-              シンプルな 2 プラン。クレジットカードのみ・自動更新。
+              個人から企業まで。クレジットカード決済・いつでもキャンセル可能。
             </p>
           </div>
 
-          <div className="mx-auto mt-14 grid max-w-4xl gap-6 md:grid-cols-2">
+          <div className="mx-auto mt-14 grid max-w-6xl gap-6 lg:grid-cols-3">
+            {/* 月額プラン */}
             <div className="rounded-2xl border border-border bg-background p-8">
               <div className="text-sm font-medium text-muted-foreground">
                 月額プラン
@@ -331,11 +335,17 @@ export default function HomePage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 いつでもキャンセル可能
               </p>
+              <ul className="mt-6 space-y-2 text-xs text-muted-foreground">
+                <li>✓ 全 4 種のダッシュボード</li>
+                <li>✓ 保存・共有 URL・PDF 出力</li>
+                <li>✓ クレジットカード決済</li>
+              </ul>
               <PricingButton plan="monthly" className="mt-8 w-full">
                 月額で始める
               </PricingButton>
             </div>
 
+            {/* 年額プラン */}
             <div className="relative rounded-2xl border-2 border-foreground bg-background p-8">
               <div className="absolute -top-3 right-8 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-3 py-1 text-xs font-semibold text-white">
                 2 ヶ月分お得
@@ -352,14 +362,64 @@ export default function HomePage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 月額換算 ¥1,250 / 月
               </p>
+              <ul className="mt-6 space-y-2 text-xs text-muted-foreground">
+                <li>✓ 月額プランのすべて</li>
+                <li>✓ 2 ヶ月分お得</li>
+                <li>✓ 年単位のレポート出力</li>
+              </ul>
               <PricingButton plan="annual" className="mt-8 w-full">
                 年額で始める
               </PricingButton>
             </div>
+
+            {/* Business プラン */}
+            <div className="relative rounded-2xl border border-border bg-foreground p-8 text-background">
+              <div className="absolute -top-3 right-8 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-sky-400 to-indigo-500 px-3 py-1 text-xs font-semibold text-white">
+                <ShieldCheck className="h-3 w-3" />
+                エンタープライズ
+              </div>
+              <div className="text-sm font-medium text-background/70">
+                Business プラン
+              </div>
+              <div className="mt-3 flex items-baseline gap-1">
+                <span className="text-4xl font-bold tracking-tight">
+                  お問い合わせ
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-background/70">
+                セキュリティ要件に応じたカスタム提供
+              </p>
+              <ul className="mt-6 space-y-2 text-xs text-background/80">
+                <li>✓ 年額プランのすべて</li>
+                <li>✓ DPA (データ処理契約) 締結</li>
+                <li>✓ IP 制限 / SSO (SAML)</li>
+                <li>✓ 監査ログ・優先サポート</li>
+                <li>✓ 専用 AI モデルチャネル</li>
+              </ul>
+              <a
+                href={`mailto:${COMPANY.email}?subject=${encodeURIComponent("Skweep Business プランお問い合わせ")}`}
+                className={cn(
+                  buttonVariants({ variant: "secondary" }),
+                  "mt-8 w-full"
+                )}
+              >
+                Business を相談する
+                <ArrowRight className="h-3.5 w-3.5" />
+              </a>
+            </div>
           </div>
 
-          <p className="mt-6 text-center text-xs text-muted-foreground">
-            支払いはクレジットカードのみ・自動更新です。
+          <p className="mt-8 text-center text-xs text-muted-foreground">
+            支払いはクレジットカードのみ・自動更新です。Business プランの請求条件は個別契約により設定します。
+            <br />
+            セキュリティ・データ保護の詳細は{" "}
+            <Link
+              href="/security"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              セキュリティページ
+            </Link>{" "}
+            をご覧ください。
           </p>
         </div>
       </section>
@@ -432,9 +492,14 @@ export default function HomePage() {
 
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
-                Legal
+                Legal & Security
               </p>
               <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <Link href="/security" className="hover:text-foreground">
+                    セキュリティ
+                  </Link>
+                </li>
                 <li>
                   <Link
                     href="/legal/tokushoho"

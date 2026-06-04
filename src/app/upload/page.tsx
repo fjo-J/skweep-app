@@ -187,13 +187,29 @@ export default function UploadPage() {
             ) : null}
           </div>
 
-          <div className="mt-6 flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-4 text-xs leading-relaxed text-muted-foreground">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-            <p>
-              プライバシー保護のため、AI に送信するのは
-              <span className="font-medium text-foreground">列名・型情報・統計・サンプル行のみ</span>
-              です。Excel 全体は外部に送信されません。
-            </p>
+          <div className="mt-6 space-y-3">
+            <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-xs leading-relaxed text-emerald-900">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <div className="space-y-1">
+                <p className="font-semibold">あなたのファイルは Skweep に保存されません</p>
+                <p>
+                  ファイル本体はお客様のブラウザのメモリ内にのみ保持されます。AI に送信されるのは
+                  <span className="font-medium">列名・型・統計値・先頭 5 件のサンプル行のみ</span>
+                  で、セル単位の生データは外部に送られません。
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl border border-border bg-background p-3 text-xs text-muted-foreground">
+              <span>処理は日本リージョン (Vercel 東京) で実行されます。</span>
+              <Link
+                href="/security"
+                className="inline-flex shrink-0 items-center gap-1 text-sky-600 underline-offset-2 hover:underline"
+              >
+                詳しいセキュリティ
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
           </div>
         </div>
       </main>
