@@ -79,6 +79,7 @@ const candidates: Candidate[] = [
     match: 73,
     metrics: ["工程別予実", "リードタイム", "歩留り推移"],
     free: false,
+    hasPreview: true,
   },
 ];
 
