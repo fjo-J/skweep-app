@@ -145,11 +145,17 @@ export default function StartPage() {
 
             <p className="mt-5 text-center text-xs leading-relaxed text-muted-foreground">
               「次へ進む」をクリックすると、Skweep の
-              <Link href="/" className="mx-1 underline underline-offset-2 hover:text-foreground">
+              <Link
+                href="/legal/terms"
+                className="mx-1 underline underline-offset-2 hover:text-foreground"
+              >
                 利用規約
               </Link>
               および
-              <Link href="/" className="mx-1 underline underline-offset-2 hover:text-foreground">
+              <Link
+                href="/legal/privacy"
+                className="mx-1 underline underline-offset-2 hover:text-foreground"
+              >
                 プライバシーポリシー
               </Link>
               に同意したものとみなされます。

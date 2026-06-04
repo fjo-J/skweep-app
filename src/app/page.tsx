@@ -387,13 +387,80 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-10 text-sm text-muted-foreground sm:flex-row">
-          <div className="flex items-center gap-2">
-            <Logo />
-            <span className="font-semibold text-foreground">Skweep</span>
-            <span className="text-xs">スクウィープ</span>
+        <div className="mx-auto max-w-6xl px-6 py-12">
+          <div className="grid gap-8 sm:grid-cols-[1.4fr_1fr_1fr]">
+            <div>
+              <div className="flex items-center gap-2">
+                <Logo />
+                <span className="font-semibold text-foreground">Skweep</span>
+                <span className="text-xs text-muted-foreground">スクウィープ</span>
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                アップロードするだけ。データが意思決定に変わる。
+                <br />
+                Skweep は Geeno が運営する SaaS です。
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                プロダクト
+              </p>
+              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <a href="#features" className="hover:text-foreground">
+                    機能
+                  </a>
+                </li>
+                <li>
+                  <a href="#dashboards" className="hover:text-foreground">
+                    ダッシュボード
+                  </a>
+                </li>
+                <li>
+                  <a href="#pricing" className="hover:text-foreground">
+                    料金
+                  </a>
+                </li>
+                <li>
+                  <Link href="/start" className="hover:text-foreground">
+                    無料で解析する
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                Legal
+              </p>
+              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <Link
+                    href="/legal/tokushoho"
+                    className="hover:text-foreground"
+                  >
+                    特定商取引法に基づく表記
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/legal/privacy" className="hover:text-foreground">
+                    プライバシーポリシー
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/legal/terms" className="hover:text-foreground">
+                    利用規約
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
-          <div>© {new Date().getFullYear()} Skweep. All rights reserved.</div>
+
+          <div className="mt-10 flex flex-col items-start justify-between gap-2 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center">
+            <span>© {new Date().getFullYear()} Geeno. All rights reserved.</span>
+            <span>運営: Geeno (代表 藤野潤也) ・ info@geeno.net</span>
+          </div>
         </div>
       </footer>
     </div>
