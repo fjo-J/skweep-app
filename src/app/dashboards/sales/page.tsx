@@ -29,6 +29,7 @@ import {
 
 import { buttonVariants } from "@/components/ui/button";
 import { SkweepLogo } from "@/components/skweep-logo";
+import { PricingButton } from "@/components/pricing-button";
 import { cn } from "@/lib/utils";
 
 const stageData = [
@@ -240,13 +241,15 @@ export default function SalesDashboardPage() {
                   </p>
                 </div>
               </div>
-              <Link
-                href="/#pricing"
-                className={buttonVariants({ variant: "secondary", size: "lg" })}
+              <PricingButton
+                plan="annual"
+                variant="secondary"
+                size="lg"
+                context="保存・共有 URL・PDF 出力と、残り 3 種類のダッシュボードがアンロックされます。"
               >
                 Pro にアップグレード
                 <ArrowUpRight className="h-4 w-4" />
-              </Link>
+              </PricingButton>
             </div>
           </div>
         </div>
@@ -364,14 +367,16 @@ function LockedAction({
   icon: React.ReactNode;
 }) {
   return (
-    <Link
-      href="/#pricing"
-      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-muted-foreground transition hover:border-foreground/30 hover:text-foreground"
-      title="Pro 限定機能"
+    <PricingButton
+      plan="monthly"
+      variant="outline"
+      size="sm"
+      className="text-xs"
+      context={`「${label}」は Pro 限定機能です。`}
     >
       <Lock className="h-3 w-3" />
       {icon}
       {label}
-    </Link>
+    </PricingButton>
   );
 }

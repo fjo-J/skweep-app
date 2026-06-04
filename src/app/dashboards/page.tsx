@@ -18,6 +18,7 @@ import {
 
 import { buttonVariants } from "@/components/ui/button";
 import { SkweepLogo } from "@/components/skweep-logo";
+import { PricingButton } from "@/components/pricing-button";
 import { cn } from "@/lib/utils";
 
 const ANALYZE_STEPS = [
@@ -261,10 +262,10 @@ function ResultsPanel({ filename }: { filename: string | null }) {
               </p>
             </div>
           </div>
-          <Link href="/#pricing" className={buttonVariants({ size: "sm" })}>
+          <PricingButton size="sm" plan="annual">
             料金プランを見る
             <ArrowRight className="h-4 w-4" />
-          </Link>
+          </PricingButton>
         </div>
       </div>
     </div>
@@ -273,15 +274,9 @@ function ResultsPanel({ filename }: { filename: string | null }) {
 
 function CandidateCard({ candidate }: { candidate: Candidate }) {
   const Icon = candidate.icon;
-  const body = (
-    <div
-      className={cn(
-        "relative flex h-full flex-col rounded-2xl border bg-background p-6 transition",
-        candidate.free
-          ? "border-foreground/20 hover:-translate-y-0.5 hover:shadow-md"
-          : "border-border"
-      )}
-    >
+
+  const inner = (
+    <>
       {!candidate.free && (
         <div className="pointer-events-none absolute inset-0 rounded-2xl bg-background/40 backdrop-blur-[1px]" />
       )}
@@ -333,41 +328,39 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
       <div className="relative mt-4">
         {candidate.free ? (
           <span
-            className={cn(
-              buttonVariants({ size: "sm", className: "w-full" })
-            )}
+            className={cn(buttonVariants({ size: "sm", className: "w-full" }))}
           >
             閲覧する
             <ArrowRight className="h-3.5 w-3.5" />
           </span>
         ) : (
-          <span
-            className={cn(
-              buttonVariants({
-                size: "sm",
-                variant: "outline",
-                className: "w-full",
-              })
-            )}
+          <PricingButton
+            size="sm"
+            variant="outline"
+            className="w-full"
+            context={`${candidate.title} は Pro 限定です。アップグレードしてすべてのダッシュボードをご利用ください。`}
           >
             <Lock className="h-3.5 w-3.5" />
             Pro でアンロック
-          </span>
+          </PricingButton>
         )}
       </div>
-    </div>
+    </>
+  );
+
+  const cardClass = cn(
+    "relative flex h-full flex-col rounded-2xl border bg-background p-6 transition",
+    candidate.free
+      ? "border-foreground/20 hover:-translate-y-0.5 hover:shadow-md"
+      : "border-border"
   );
 
   if (candidate.free) {
     return (
-      <Link href={`/dashboards/${candidate.slug}`} className="group">
-        {body}
+      <Link href={`/dashboards/${candidate.slug}`} className={cardClass}>
+        {inner}
       </Link>
     );
   }
-  return (
-    <Link href="/#pricing" className="group" aria-label={`${candidate.title} は Pro 限定`}>
-      {body}
-    </Link>
-  );
+  return <div className={cardClass}>{inner}</div>;
 }

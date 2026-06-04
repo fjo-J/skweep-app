@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { PricingButton } from "@/components/pricing-button";
 import {
   ArrowRight,
   Upload,
@@ -292,15 +293,13 @@ export default function HomePage() {
                   </li>
                 ))}
               </ul>
-              <Link
-                href="/start"
-                className={buttonVariants({
-                  variant: "secondary",
-                  className: "mt-8 w-full",
-                })}
+              <PricingButton
+                variant="secondary"
+                className="mt-8 w-full"
+                plan="monthly"
               >
-                無料で始めて Pro へ
-              </Link>
+                Pro プランを確認する
+              </PricingButton>
             </div>
           </div>
         </div>
@@ -332,12 +331,9 @@ export default function HomePage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 いつでもキャンセル可能
               </p>
-              <Link
-                href="/start"
-                className={buttonVariants({ className: "mt-8 w-full" })}
-              >
+              <PricingButton plan="monthly" className="mt-8 w-full">
                 月額で始める
-              </Link>
+              </PricingButton>
             </div>
 
             <div className="relative rounded-2xl border-2 border-foreground bg-background p-8">
@@ -356,12 +352,9 @@ export default function HomePage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 月額換算 ¥1,250 / 月
               </p>
-              <Link
-                href="/start"
-                className={buttonVariants({ className: "mt-8 w-full" })}
-              >
+              <PricingButton plan="annual" className="mt-8 w-full">
                 年額で始める
-              </Link>
+              </PricingButton>
             </div>
           </div>
 
