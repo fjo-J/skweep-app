@@ -37,6 +37,8 @@ type Candidate = {
   match: number;
   metrics: string[];
   free: boolean;
+  /** Pro 限定だがプレビュー閲覧可能なページが存在する場合 true */
+  hasPreview?: boolean;
 };
 
 const candidates: Candidate[] = [
@@ -57,6 +59,7 @@ const candidates: Candidate[] = [
     match: 88,
     metrics: ["売上 YoY", "粗利益率", "事業セグメント比"],
     free: false,
+    hasPreview: true,
   },
   {
     slug: "ops",
@@ -344,6 +347,15 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
             Pro でアンロック
           </PricingButton>
         )}
+        {!candidate.free && candidate.hasPreview ? (
+          <Link
+            href={`/dashboards/${candidate.slug}`}
+            className="relative mt-2 inline-flex w-full items-center justify-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          >
+            プレビューを見る
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        ) : null}
       </div>
     </>
   );
