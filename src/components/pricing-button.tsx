@@ -6,7 +6,6 @@ import {
   CreditCard,
   Crown,
   Loader2,
-  Lock,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
@@ -15,7 +14,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { buttonVariants } from "@/components/ui/button";
@@ -113,19 +111,23 @@ function PricingDialog({
   const [selected, setSelected] = useState<Plan>(initialPlan);
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // 開閉ごとに状態を初期化（初期プランは props 同期）
   useEffect(() => {
     if (!open) return;
     setSelected(initialPlan);
     setSubmitting(false);
-    setDone(false);
+    setErrorMessage(null);
     if (typeof window !== "undefined") {
       try {
         const raw = window.localStorage.getItem("skweep:lead");
         if (raw) {
-          const parsed = JSON.parse(raw) as { email?: string };
+          const parsed = JSON.parse(raw) as {
+            email?: string;
+            fullName?: string;
+            companyName?: string;
+          };
           if (parsed?.email) setEmail(parsed.email);
         }
       } catch {
@@ -142,17 +144,65 @@ function PricingDialog({
 
   const onSubmit = async () => {
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setSubmitting(false);
-    setDone(true);
+    setErrorMessage(null);
+
+    // lead 情報を metadata として渡す (任意)
+    let metadata: Record<string, string> | undefined;
+    if (typeof window !== "undefined") {
+      try {
+        const raw = window.localStorage.getItem("skweep:lead");
+        if (raw) {
+          const parsed = JSON.parse(raw) as {
+            fullName?: string;
+            companyName?: string;
+          };
+          metadata = {};
+          if (parsed.fullName) metadata.full_name = parsed.fullName;
+          if (parsed.companyName) metadata.company_name = parsed.companyName;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    try {
+      const res = await fetch("/api/checkout/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan: selected,
+          email: email || undefined,
+          metadata,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as {
+          message?: string;
+          error?: string;
+        } | null;
+        throw new Error(
+          data?.message ?? data?.error ?? `決済セッションの作成に失敗しました (${res.status})`
+        );
+      }
+
+      const data = (await res.json()) as { url?: string };
+      if (!data.url) throw new Error("決済 URL が取得できませんでした");
+
+      // Stripe Checkout へ遷移
+      window.location.href = data.url;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "予期しないエラーが発生しました";
+      setErrorMessage(message);
+      setSubmitting(false);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0 sm:max-w-lg">
-        {done ? (
-          <SuccessView plan={selected} onClose={() => onOpenChange(false)} />
-        ) : (
+        {(
           <div className="flex flex-col">
             {/* Header */}
             <div className="rounded-t-xl bg-gradient-to-br from-sky-50 via-indigo-50 to-violet-50 p-6">
@@ -228,13 +278,22 @@ function PricingDialog({
                 />
               </div>
 
-              {/* Demo notice */}
-              <p className="mt-5 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              {/* Test mode notice */}
+              <p className="mt-5 flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
                 <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>
-                  デモ版のため、実際の課金は発生しません。Stripe 接続後の本番では、ここでカード情報入力に進みます。
+                  決済は Stripe の安全な決済ページにリダイレクトします。テスト中はカード番号
+                  <span className="mx-1 font-mono">4242 4242 4242 4242</span>
+                  をご利用ください。
                 </span>
               </p>
+
+              {/* Error */}
+              {errorMessage ? (
+                <p className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                  {errorMessage}
+                </p>
+              ) : null}
             </div>
 
             {/* Footer */}
@@ -251,12 +310,12 @@ function PricingDialog({
                 {submitting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    処理中…
+                    決済ページに移動中…
                   </>
                 ) : (
                   <>
                     <CreditCard className="h-4 w-4" />
-                    カード情報を入力する
+                    決済ページへ進む
                   </>
                 )}
               </button>
@@ -309,38 +368,3 @@ function PlanTab({
   );
 }
 
-function SuccessView({
-  plan,
-  onClose,
-}: {
-  plan: Plan;
-  onClose: () => void;
-}) {
-  return (
-    <div className="flex flex-col items-center px-6 py-10 text-center">
-      <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-        <CheckCircle2 className="h-7 w-7" />
-      </span>
-      <h3 className="mt-5 text-lg font-semibold">
-        デモフローはここまでです
-      </h3>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        本番リリース時には、ここで <span className="font-medium text-foreground">Stripe Checkout</span>
-        が開き、{plan === "annual" ? "年額 ¥15,000" : "月額 ¥1,500"} のサブスクリプションが開始されます。
-      </p>
-      <div className="mt-6 flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
-        <button
-          type="button"
-          onClick={onClose}
-          className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
-        >
-          閉じる
-        </button>
-      </div>
-      <p className="mt-5 inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <Lock className="h-3 w-3" />
-        Stripe 接続は Phase 7 で実装予定
-      </p>
-    </div>
-  );
-}
