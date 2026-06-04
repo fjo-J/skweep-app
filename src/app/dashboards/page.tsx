@@ -69,6 +69,7 @@ const candidates: Candidate[] = [
     match: 81,
     metrics: ["稼働率", "ステータス別タスク数", "リードタイム"],
     free: false,
+    hasPreview: true,
   },
   {
     slug: "production",
