@@ -1,22 +1,30 @@
+"use client";
+
 import Link from "next/link";
-import type { Metadata } from "next";
-import { ArrowRight, CheckCircle2, LayoutDashboard, Receipt } from "lucide-react";
+import { use, useEffect } from "react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  LayoutDashboard,
+  Receipt,
+} from "lucide-react";
 
 import { SkweepLogo } from "@/components/skweep-logo";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { promotePendingToActive } from "@/lib/plan";
 
-export const metadata: Metadata = {
-  title: "ご契約ありがとうございます | Skweep",
-  description: "Skweep Pro へのご加入ありがとうございます。",
-};
-
-export default async function CheckoutSuccessPage({
+export default function CheckoutSuccessPage({
   searchParams,
 }: {
   searchParams: Promise<{ session_id?: string }>;
 }) {
-  const { session_id } = await searchParams;
+  const { session_id } = use(searchParams);
+
+  // 決済完了直後に、保留プランを確定状態 (Pro) に昇格させる
+  useEffect(() => {
+    promotePendingToActive(session_id);
+  }, [session_id]);
 
   return (
     <div className="relative flex min-h-screen flex-col">
@@ -45,18 +53,18 @@ export default async function CheckoutSuccessPage({
 
           <div className="mt-10 flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
             <Link
-              href="/dashboards"
+              href="/workspace"
               className={cn(buttonVariants({ size: "lg" }))}
             >
               <LayoutDashboard className="h-4 w-4" />
-              ダッシュボードへ
+              マイ・ワークスペースへ
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
-              href="/"
+              href="/upload"
               className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
             >
-              トップへ戻る
+              新しい解析を開始
             </Link>
           </div>
 
@@ -69,7 +77,7 @@ export default async function CheckoutSuccessPage({
           ) : null}
 
           <p className="mt-8 max-w-md text-xs leading-relaxed text-muted-foreground">
-            領収書はご請求用メールアドレスに自動送信されます。サブスクリプションの解約・カード情報の変更は、Stripe Customer Portal から行えます。
+            領収書はご請求用メールアドレスに自動送信されます。サブスクリプションの解約・カード情報の変更は、マイ・ワークスペースから行えます。
           </p>
         </div>
       </main>

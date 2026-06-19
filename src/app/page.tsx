@@ -487,6 +487,11 @@ export default function HomePage() {
                     無料で解析する
                   </Link>
                 </li>
+                <li>
+                  <Link href="/workspace" className="hover:text-foreground">
+                    マイ・ワークスペース
+                  </Link>
+                </li>
               </ul>
             </div>
 

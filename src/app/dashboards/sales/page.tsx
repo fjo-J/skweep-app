@@ -30,6 +30,7 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { SkweepLogo } from "@/components/skweep-logo";
 import { PricingButton } from "@/components/pricing-button";
+import { SaveToWorkspaceButton } from "@/components/save-to-workspace-button";
 import { cn } from "@/lib/utils";
 
 const stageData = [
@@ -109,7 +110,7 @@ export default function SalesDashboardPage() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <LockedAction label="保存" icon={<Crown className="h-3.5 w-3.5" />} />
+              <SaveToWorkspaceButton dashboardSlug="sales" />
               <LockedAction label="共有 URL" icon={<Share2 className="h-3.5 w-3.5" />} />
               <LockedAction label="PDF 出力" icon={<Download className="h-3.5 w-3.5" />} />
             </div>

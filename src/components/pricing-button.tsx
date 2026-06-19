@@ -189,6 +189,10 @@ function PricingDialog({
       const data = (await res.json()) as { url?: string };
       if (!data.url) throw new Error("決済 URL が取得できませんでした");
 
+      // Stripe Checkout に渡る前に「どのプランで開始したか」を保留 (戻ってきた時に Pro 状態に昇格させる)
+      const { setPendingPlan } = await import("@/lib/plan");
+      setPendingPlan(selected);
+
       // Stripe Checkout へ遷移
       window.location.href = data.url;
     } catch (error) {
