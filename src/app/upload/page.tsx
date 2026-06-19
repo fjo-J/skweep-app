@@ -97,19 +97,73 @@ export default function UploadPage() {
   const onAnalyze = useCallback(async () => {
     if (!selected) return;
     setIsSubmitting(true);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(
-        "skweep:upload",
-        JSON.stringify({
-          name: selected.name,
-          size: selected.size,
-          ext: selected.ext,
-          uploadedAt: new Date().toISOString(),
-        })
+    setError(null);
+    try {
+      // 1) アップロードメタ情報を保存 (互換性のため既存キーを残す)
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          "skweep:upload",
+          JSON.stringify({
+            name: selected.name,
+            size: selected.size,
+            ext: selected.ext,
+            uploadedAt: new Date().toISOString(),
+          })
+        );
+      }
+
+      // 2) ブラウザでファイルをパース (列メタ + サンプル抽出 + PII マスク)
+      const { parseFileToAnalysisInput } = await import(
+        "@/lib/file-parser"
       );
+      const { input, totalRowCount, truncated } =
+        await parseFileToAnalysisInput(selected.file);
+
+      if (input.columns.length === 0) {
+        throw new Error(
+          "解析できる列が見つかりませんでした。1 行目に列名があるファイルをアップロードしてください。"
+        );
+      }
+
+      // 3) サーバーの AI Gateway に列メタのみ送信
+      const res = await fetch("/api/ai/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as {
+          message?: string;
+          error?: string;
+        } | null;
+        throw new Error(
+          data?.message ?? data?.error ?? `解析 API が失敗しました (${res.status})`
+        );
+      }
+      const output = (await res.json()) as import(
+        "@/lib/ai/types"
+      ).AnalysisOutput;
+
+      // 4) 解析結果を localStorage に保存
+      const { setCurrentAnalysis } = await import("@/lib/analysis-store");
+      setCurrentAnalysis({
+        filename: selected.name,
+        totalRowCount,
+        truncated,
+        output,
+        analyzedAt: new Date().toISOString(),
+      });
+
+      // 5) /dashboards へ遷移
+      router.push("/dashboards");
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "解析中に予期しないエラーが発生しました。";
+      setError(message);
+      setIsSubmitting(false);
     }
-    await new Promise((r) => setTimeout(r, 500));
-    router.push("/dashboards");
   }, [router, selected]);
 
   return (

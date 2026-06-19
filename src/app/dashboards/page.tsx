@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,6 +20,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { SkweepLogo } from "@/components/skweep-logo";
 import { PricingButton } from "@/components/pricing-button";
 import { cn } from "@/lib/utils";
+import {
+  getCurrentAnalysis,
+  type StoredCurrentAnalysis,
+} from "@/lib/analysis-store";
 
 const ANALYZE_STEPS = [
   "ファイルを読み込み中",
@@ -29,77 +33,97 @@ const ANALYZE_STEPS = [
   "ダッシュボードを構成中",
 ];
 
-type Candidate = {
-  slug: string;
+type CandidateMeta = {
   icon: typeof TrendingUp;
   title: string;
   desc: string;
-  match: number;
   metrics: string[];
   free: boolean;
-  /** Pro 限定だがプレビュー閲覧可能なページが存在する場合 true */
   hasPreview?: boolean;
 };
 
-const candidates: Candidate[] = [
-  {
-    slug: "sales",
+const CANDIDATE_META: Record<string, CandidateMeta> = {
+  sales: {
     icon: TrendingUp,
     title: "営業パイプライン",
     desc: "リード数・受注率・商談ステージのボトルネックを可視化",
-    match: 96,
     metrics: ["商談ステージ別件数", "受注率トレンド", "担当者別パイプライン"],
     free: true,
   },
-  {
-    slug: "executive",
+  executive: {
     icon: Briefcase,
     title: "経営サマリー",
     desc: "売上・利益・成長率の経営 KPI を 1 枚に集約",
-    match: 88,
     metrics: ["売上 YoY", "粗利益率", "事業セグメント比"],
     free: false,
     hasPreview: true,
   },
-  {
-    slug: "ops",
+  ops: {
     icon: Factory,
     title: "現場オペレーション",
     desc: "稼働率・タスク進捗・ボトルネックを現場ビューで把握",
-    match: 81,
     metrics: ["稼働率", "ステータス別タスク数", "リードタイム"],
     free: false,
     hasPreview: true,
   },
-  {
-    slug: "production",
+  production: {
     icon: LineChart,
     title: "生産管理ボード",
     desc: "工程ごとの予実差・リードタイムを月次でトラッキング",
-    match: 73,
     metrics: ["工程別予実", "リードタイム", "歩留り推移"],
     free: false,
     hasPreview: true,
   },
-];
+};
+
+const FALLBACK_ORDER = ["sales", "executive", "ops", "production"] as const;
+const FALLBACK_MATCH: Record<string, number> = {
+  sales: 96,
+  executive: 88,
+  ops: 81,
+  production: 73,
+};
+
+type DisplayCandidate = {
+  slug: string;
+  match: number;
+  reasoning?: string;
+} & CandidateMeta;
+
+function buildDisplayCandidates(
+  analysis: StoredCurrentAnalysis | null
+): DisplayCandidate[] {
+  if (!analysis) {
+    return FALLBACK_ORDER.map((slug) => ({
+      slug,
+      ...CANDIDATE_META[slug],
+      match: FALLBACK_MATCH[slug],
+    }));
+  }
+
+  return analysis.output.candidates
+    .map<DisplayCandidate | null>((c) => {
+      const meta = CANDIDATE_META[c.slug];
+      if (!meta) return null;
+      return {
+        slug: c.slug,
+        ...meta,
+        // AI から KPI が返っていれば優先
+        metrics: c.kpis && c.kpis.length > 0 ? c.kpis : meta.metrics,
+        match: c.match,
+        reasoning: c.reasoning,
+      };
+    })
+    .filter((c): c is DisplayCandidate => c !== null);
+}
 
 export default function DashboardsPage() {
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(false);
-  const [filename, setFilename] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<StoredCurrentAnalysis | null>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = window.localStorage.getItem("skweep:upload");
-        if (raw) {
-          const parsed = JSON.parse(raw) as { name?: string };
-          if (parsed?.name) setFilename(parsed.name);
-        }
-      } catch {
-        // ignore
-      }
-    }
+    setAnalysis(getCurrentAnalysis());
 
     const totalMs = 2500;
     const interval = totalMs / ANALYZE_STEPS.length;
@@ -142,9 +166,9 @@ export default function DashboardsPage() {
       <main className="flex-1">
         <div className="mx-auto max-w-6xl px-6 py-16">
           {!done ? (
-            <AnalyzingPanel step={step} filename={filename} />
+            <AnalyzingPanel step={step} filename={analysis?.filename ?? null} />
           ) : (
-            <ResultsPanel filename={filename} />
+            <ResultsPanel analysis={analysis} />
           )}
         </div>
       </main>
@@ -220,7 +244,18 @@ function AnalyzingPanel({
   );
 }
 
-function ResultsPanel({ filename }: { filename: string | null }) {
+function ResultsPanel({
+  analysis,
+}: {
+  analysis: StoredCurrentAnalysis | null;
+}) {
+  const display = useMemo(() => buildDisplayCandidates(analysis), [analysis]);
+  const filename = analysis?.filename ?? null;
+  const category = analysis?.output.category ?? null;
+  const totalRowCount = analysis?.totalRowCount ?? null;
+  const columnCount = analysis?.output ? undefined : undefined; // 列数は output に無いので filename 横に行数のみ
+  void columnCount;
+
   return (
     <div>
       <div className="mx-auto max-w-3xl text-center">
@@ -229,25 +264,38 @@ function ResultsPanel({ filename }: { filename: string | null }) {
           STEP 3 / 3 ・ ダッシュボード候補
         </span>
         <h1 className="mt-5 text-3xl font-bold tracking-tight sm:text-4xl">
-          AI が <span className="bg-gradient-to-r from-sky-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">4 種類のダッシュボード</span>
-          を提案しました
+          AI は{" "}
+          <span className="bg-gradient-to-r from-sky-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">
+            {category ? `「${category}」カテゴリ` : "業務カテゴリ"}
+          </span>
+          {" "}と判定しました
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
           {filename ? (
             <>
-              <span className="font-medium text-foreground">{filename}</span>{" "}
-              の列構造・統計から最適なビューを推定しています。
+              <span className="font-medium text-foreground">{filename}</span>
+              {totalRowCount !== null && totalRowCount > 0 ? (
+                <span>
+                  {" "}
+                  (約 {totalRowCount.toLocaleString()} 行) の列構造・統計から
+                  最適なビューを推定しています。
+                </span>
+              ) : (
+                <>の列構造・統計から最適なビューを推定しています。</>
+              )}
             </>
           ) : (
             <>列構造・統計から最適なビューを推定しています。</>
           )}
-          無料版では <span className="font-medium text-foreground">営業パイプライン</span>{" "}
+          {" "}
+          無料版では{" "}
+          <span className="font-medium text-foreground">営業パイプライン</span>{" "}
           を閲覧できます。
         </p>
       </div>
 
       <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {candidates.map((c) => (
+        {display.map((c) => (
           <CandidateCard key={c.slug} candidate={c} />
         ))}
       </div>
@@ -277,7 +325,7 @@ function ResultsPanel({ filename }: { filename: string | null }) {
   );
 }
 
-function CandidateCard({ candidate }: { candidate: Candidate }) {
+function CandidateCard({ candidate }: { candidate: DisplayCandidate }) {
   const Icon = candidate.icon;
 
   const inner = (
@@ -317,7 +365,7 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
       </p>
 
       <ul className="relative mt-5 space-y-1.5 text-xs text-muted-foreground">
-        {candidate.metrics.map((m) => (
+        {candidate.metrics.slice(0, 3).map((m) => (
           <li key={m} className="flex items-center gap-1.5">
             <Check className="h-3 w-3 text-emerald-600" />
             {m}
