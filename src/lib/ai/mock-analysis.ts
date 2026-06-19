@@ -28,6 +28,14 @@ export function buildMockAnalysis(
       charts: ["bar", "line"],
     },
     {
+      slug: "marketing",
+      title: "マーケティング",
+      match: score.marketing,
+      reasoning: "施策・流入・コンバージョンを示唆する列が検出されました。",
+      kpis: ["チャネル別流入", "CVR 推移", "キャンペーン別 ROAS"],
+      charts: ["donut", "line"],
+    },
+    {
       slug: "executive",
       title: "経営サマリー",
       match: score.executive,
@@ -76,6 +84,8 @@ function labelForSlug(slug: DashboardCandidateSlug): string {
   switch (slug) {
     case "sales":
       return "営業";
+    case "marketing":
+      return "マーケティング";
     case "executive":
       return "経営";
     case "ops":
@@ -87,6 +97,7 @@ function labelForSlug(slug: DashboardCandidateSlug): string {
 
 function computeCandidateScores(input: AnalysisInput): {
   sales: number;
+  marketing: number;
   executive: number;
   ops: number;
   production: number;
@@ -97,30 +108,72 @@ function computeCandidateScores(input: AnalysisInput): {
     keywords.some((k) => colNames.some((n) => n.includes(k.toLowerCase())));
 
   const salesHits =
-    Number(matchAny(["商談", "受注", "リード", "deal", "opportunity"])) +
-    Number(matchAny(["顧客", "client", "company"])) +
-    Number(matchAny(["金額", "amount", "price"]));
+    Number(
+      matchAny(["商談", "受注", "リード", "deal", "opportunity", "pipeline"])
+    ) +
+    Number(matchAny(["顧客", "client", "company", "account"])) +
+    Number(matchAny(["金額", "amount", "price", "value"]));
+
+  const marketingHits =
+    Number(
+      matchAny([
+        "施策",
+        "キャンペーン",
+        "campaign",
+        "promotion",
+        "ad",
+        "ads",
+        "広告",
+        "marketing",
+      ])
+    ) +
+    Number(
+      matchAny([
+        "ctr",
+        "cv",
+        "cvr",
+        "conversion",
+        "コンバージョン",
+        "クリック",
+        "click",
+      ])
+    ) +
+    Number(
+      matchAny([
+        "流入",
+        "セッション",
+        "session",
+        "impression",
+        "インプレッション",
+        "pv",
+        "ページビュー",
+      ])
+    ) +
+    Number(
+      matchAny(["roas", "cpa", "cac", "cpm", "ltv", "媒体", "channel", "チャネル"])
+    );
 
   const execHits =
     Number(matchAny(["売上", "revenue", "sales"])) +
-    Number(matchAny(["利益", "profit", "margin"])) +
-    Number(matchAny(["セグメント", "segment", "事業"]));
+    Number(matchAny(["利益", "profit", "margin", "ebitda"])) +
+    Number(matchAny(["セグメント", "segment", "事業", "部門"]));
 
   const opsHits =
-    Number(matchAny(["タスク", "task", "status", "ステータス"])) +
-    Number(matchAny(["担当", "assignee", "owner"])) +
-    Number(matchAny(["完了", "進捗", "deadline"]));
+    Number(matchAny(["タスク", "task", "status", "ステータス", "チケット", "ticket"])) +
+    Number(matchAny(["担当", "assignee", "owner", "アサイン"])) +
+    Number(matchAny(["完了", "進捗", "deadline", "期限", "sla"]));
 
   const prodHits =
     Number(matchAny(["工程", "process", "production"])) +
     Number(matchAny(["予実", "plan", "actual"])) +
-    Number(matchAny(["歩留", "yield", "defect"]));
+    Number(matchAny(["歩留", "yield", "defect", "不良", "ロット"]));
 
   const toScore = (hits: number, base: number) =>
     Math.min(99, base + hits * 8 + Math.floor(Math.random() * 4));
 
   return {
     sales: toScore(salesHits, 70),
+    marketing: toScore(marketingHits, 67),
     executive: toScore(execHits, 65),
     ops: toScore(opsHits, 62),
     production: toScore(prodHits, 58),

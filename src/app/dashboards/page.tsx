@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
   Briefcase,
@@ -12,6 +13,7 @@ import {
   LineChart,
   Loader2,
   Lock,
+  Megaphone,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
@@ -33,29 +35,34 @@ const ANALYZE_STEPS = [
   "ダッシュボードを構成中",
 ];
 
-type CandidateMeta = {
+type CandidateMetaBase = {
   icon: typeof TrendingUp;
   title: string;
   desc: string;
   metrics: string[];
-  free: boolean;
-  hasPreview?: boolean;
+  hasPreview: boolean;
 };
 
-const CANDIDATE_META: Record<string, CandidateMeta> = {
+const CANDIDATE_META: Record<string, CandidateMetaBase> = {
   sales: {
     icon: TrendingUp,
     title: "営業パイプライン",
     desc: "リード数・受注率・商談ステージのボトルネックを可視化",
     metrics: ["商談ステージ別件数", "受注率トレンド", "担当者別パイプライン"],
-    free: true,
+    hasPreview: true,
+  },
+  marketing: {
+    icon: Megaphone,
+    title: "マーケティング",
+    desc: "チャネル流入・CVR・ROAS から効く施策と止めるべき施策を判定",
+    metrics: ["チャネル別流入", "CVR 推移", "キャンペーン別 ROAS"],
+    hasPreview: true,
   },
   executive: {
     icon: Briefcase,
     title: "経営サマリー",
     desc: "売上・利益・成長率の経営 KPI を 1 枚に集約",
     metrics: ["売上 YoY", "粗利益率", "事業セグメント比"],
-    free: false,
     hasPreview: true,
   },
   ops: {
@@ -63,7 +70,6 @@ const CANDIDATE_META: Record<string, CandidateMeta> = {
     title: "現場オペレーション",
     desc: "稼働率・タスク進捗・ボトルネックを現場ビューで把握",
     metrics: ["稼働率", "ステータス別タスク数", "リードタイム"],
-    free: false,
     hasPreview: true,
   },
   production: {
@@ -71,50 +77,112 @@ const CANDIDATE_META: Record<string, CandidateMeta> = {
     title: "生産管理ボード",
     desc: "工程ごとの予実差・リードタイムを月次でトラッキング",
     metrics: ["工程別予実", "リードタイム", "歩留り推移"],
-    free: false,
     hasPreview: true,
   },
 };
 
-const FALLBACK_ORDER = ["sales", "executive", "ops", "production"] as const;
+const FALLBACK_ORDER = [
+  "sales",
+  "marketing",
+  "executive",
+  "ops",
+  "production",
+] as const;
 const FALLBACK_MATCH: Record<string, number> = {
   sales: 96,
-  executive: 88,
-  ops: 81,
-  production: 73,
+  marketing: 84,
+  executive: 79,
+  ops: 73,
+  production: 68,
 };
+
+/** トップマッチがこれ未満なら「明確なカテゴリ判定なし」とみなしてフォールバック */
+const MATCH_THRESHOLD = 78;
 
 type DisplayCandidate = {
   slug: string;
   match: number;
   reasoning?: string;
-} & CandidateMeta;
+  /** このセッションで無料閲覧できる候補かどうか (動的) */
+  free: boolean;
+} & CandidateMetaBase;
 
-function buildDisplayCandidates(
-  analysis: StoredCurrentAnalysis | null
-): DisplayCandidate[] {
+type BuildResult = {
+  candidates: DisplayCandidate[];
+  /** トップマッチが閾値を下回り、フォールバック (営業サンプル) で表示している場合 true */
+  fallback: boolean;
+};
+
+function buildDisplay(analysis: StoredCurrentAnalysis | null): BuildResult {
   if (!analysis) {
-    return FALLBACK_ORDER.map((slug) => ({
-      slug,
-      ...CANDIDATE_META[slug],
-      match: FALLBACK_MATCH[slug],
-    }));
+    // 直接アクセス時はサンプル表示 (sales 無料)
+    return {
+      candidates: FALLBACK_ORDER.map((slug) => ({
+        slug,
+        ...CANDIDATE_META[slug],
+        match: FALLBACK_MATCH[slug],
+        free: slug === "sales",
+      })),
+      fallback: false,
+    };
   }
 
-  return analysis.output.candidates
-    .map<DisplayCandidate | null>((c) => {
+  const apiCandidates = analysis.output.candidates
+    .map((c) => {
       const meta = CANDIDATE_META[c.slug];
       if (!meta) return null;
       return {
         slug: c.slug,
-        ...meta,
-        // AI から KPI が返っていれば優先
-        metrics: c.kpis && c.kpis.length > 0 ? c.kpis : meta.metrics,
+        meta,
         match: c.match,
         reasoning: c.reasoning,
+        kpis: c.kpis,
       };
     })
-    .filter((c): c is DisplayCandidate => c !== null);
+    .filter(
+      (c): c is NonNullable<typeof c> => c !== null
+    );
+
+  if (apiCandidates.length === 0) {
+    // API レスポンスが解釈できなかった場合もフォールバック
+    return {
+      candidates: FALLBACK_ORDER.map((slug) => ({
+        slug,
+        ...CANDIDATE_META[slug],
+        match: FALLBACK_MATCH[slug],
+        free: slug === "sales",
+      })),
+      fallback: true,
+    };
+  }
+
+  const topMatch = apiCandidates[0].match;
+  const fallback = topMatch < MATCH_THRESHOLD;
+
+  // フォールバック時は sales を無料、そうでなければトップマッチを無料
+  const freeSlug = fallback ? "sales" : apiCandidates[0].slug;
+
+  // フォールバック時は sales を先頭に並べ替え
+  const ordered = fallback
+    ? [...apiCandidates].sort((a, b) => {
+        if (a.slug === "sales") return -1;
+        if (b.slug === "sales") return 1;
+        return b.match - a.match;
+      })
+    : apiCandidates;
+
+  return {
+    candidates: ordered.map((c) => ({
+      slug: c.slug,
+      ...c.meta,
+      metrics:
+        c.kpis && c.kpis.length > 0 ? c.kpis : c.meta.metrics,
+      match: c.match,
+      reasoning: c.reasoning,
+      free: c.slug === freeSlug,
+    })),
+    fallback,
+  };
 }
 
 export default function DashboardsPage() {
@@ -249,12 +317,14 @@ function ResultsPanel({
 }: {
   analysis: StoredCurrentAnalysis | null;
 }) {
-  const display = useMemo(() => buildDisplayCandidates(analysis), [analysis]);
+  const { candidates, fallback } = useMemo(
+    () => buildDisplay(analysis),
+    [analysis]
+  );
   const filename = analysis?.filename ?? null;
   const category = analysis?.output.category ?? null;
   const totalRowCount = analysis?.totalRowCount ?? null;
-  const columnCount = analysis?.output ? undefined : undefined; // 列数は output に無いので filename 横に行数のみ
-  void columnCount;
+  const freeCandidate = candidates.find((c) => c.free);
 
   return (
     <div>
@@ -264,11 +334,23 @@ function ResultsPanel({
           STEP 3 / 3 ・ ダッシュボード候補
         </span>
         <h1 className="mt-5 text-3xl font-bold tracking-tight sm:text-4xl">
-          AI は{" "}
-          <span className="bg-gradient-to-r from-sky-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">
-            {category ? `「${category}」カテゴリ` : "業務カテゴリ"}
-          </span>
-          {" "}と判定しました
+          {fallback ? (
+            <>
+              該当する{" "}
+              <span className="bg-gradient-to-r from-sky-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">
+                明確なカテゴリ
+              </span>
+              {" "}は見つかりませんでした
+            </>
+          ) : (
+            <>
+              AI は{" "}
+              <span className="bg-gradient-to-r from-sky-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">
+                {category ? `「${category}」カテゴリ` : "業務カテゴリ"}
+              </span>
+              {" "}と判定しました
+            </>
+          )}
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
           {filename ? (
@@ -277,25 +359,27 @@ function ResultsPanel({
               {totalRowCount !== null && totalRowCount > 0 ? (
                 <span>
                   {" "}
-                  (約 {totalRowCount.toLocaleString()} 行) の列構造・統計から
-                  最適なビューを推定しています。
+                  (約 {totalRowCount.toLocaleString()} 行)
                 </span>
-              ) : (
-                <>の列構造・統計から最適なビューを推定しています。</>
-              )}
+              ) : null}
+              {" "}の列構造・統計から最適なビューを推定しています。
             </>
           ) : (
             <>列構造・統計から最適なビューを推定しています。</>
           )}
           {" "}
           無料版では{" "}
-          <span className="font-medium text-foreground">営業パイプライン</span>{" "}
+          <span className="font-medium text-foreground">
+            {freeCandidate?.title ?? "営業パイプライン"}
+          </span>{" "}
           を閲覧できます。
         </p>
       </div>
 
-      <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {display.map((c) => (
+      {fallback ? <FallbackBanner /> : null}
+
+      <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        {candidates.map((c) => (
           <CandidateCard key={c.slug} candidate={c} />
         ))}
       </div>
@@ -320,6 +404,24 @@ function ResultsPanel({
             <ArrowRight className="h-4 w-4" />
           </PricingButton>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function FallbackBanner() {
+  return (
+    <div className="mx-auto mt-8 flex max-w-3xl items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+      <div className="space-y-1">
+        <p className="font-semibold">
+          現時点で対応している 5 カテゴリと明確に一致するパターンが見つかりませんでした
+        </p>
+        <p className="text-amber-900/80">
+          サンプルとして
+          <span className="mx-1 font-medium">営業パイプライン</span>
+          を表示します。あなたのファイルに「商談」「売上」「キャンペーン」「タスク」「工程」などの列名が含まれていると、より精度の高いカテゴリ判定が可能です。
+        </p>
       </div>
     </div>
   );

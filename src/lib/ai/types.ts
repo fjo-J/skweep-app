@@ -43,6 +43,7 @@ export type AnalysisInput = {
 
 export type DashboardCandidateSlug =
   | "sales"
+  | "marketing"
   | "executive"
   | "ops"
   | "production";
