@@ -34,6 +34,7 @@ import { SkweepLogo } from "@/components/skweep-logo";
 import { PricingButton } from "@/components/pricing-button";
 import { SaveToWorkspaceButton } from "@/components/save-to-workspace-button";
 import { ProPreviewBanner } from "@/components/pro-preview-banner";
+import { ProUpgradeCta } from "@/components/pro-upgrade-cta";
 import { cn } from "@/lib/utils";
 
 const planActual = [
@@ -405,33 +406,12 @@ export default function ProductionDashboardPage() {
             </div>
           </div>
 
-          {/* Upgrade CTA */}
-          <div className="mt-10 overflow-hidden rounded-2xl border border-foreground bg-foreground text-background">
-            <div className="flex flex-col items-start justify-between gap-5 p-7 sm:flex-row sm:items-center sm:p-8">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-indigo-500 text-white">
-                  <Crown className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="text-base font-semibold">
-                    歩留り改善の意思決定を、データで毎月。
-                  </p>
-                  <p className="mt-1 text-sm text-background/70">
-                    Pro なら工程ログをアップロードするたびに、ボトルネックと改善提案が自動更新されます。
-                  </p>
-                </div>
-              </div>
-              <PricingButton
-                plan="annual"
-                variant="secondary"
-                size="lg"
-                context="生産管理ボードをはじめ、全 4 種のダッシュボードと AI 改善提案が利用できます。"
-              >
-                Pro にアップグレード
-                <ArrowUpRight className="h-4 w-4" />
-              </PricingButton>
-            </div>
-          </div>
+          {/* Upgrade CTA (Pro 契約済みなら非表示) */}
+          <ProUpgradeCta
+            title="歩留り改善の意思決定を、データで毎月。"
+            description="Pro なら工程ログをアップロードするたびに、ボトルネックと改善提案が自動更新されます。"
+            context="生産管理ボードをはじめ、全 5 種のダッシュボードと AI 改善提案が利用できます。"
+          />
         </div>
       </main>
     </div>
