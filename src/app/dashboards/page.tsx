@@ -26,6 +26,7 @@ import {
   getCurrentAnalysis,
   type StoredCurrentAnalysis,
 } from "@/lib/analysis-store";
+import { isPro } from "@/lib/plan";
 
 const ANALYZE_STEPS = [
   "ファイルを読み込み中",
@@ -113,15 +114,18 @@ type BuildResult = {
   fallback: boolean;
 };
 
-function buildDisplay(analysis: StoredCurrentAnalysis | null): BuildResult {
+function buildDisplay(
+  analysis: StoredCurrentAnalysis | null,
+  pro: boolean
+): BuildResult {
   if (!analysis) {
-    // 直接アクセス時はサンプル表示 (sales 無料)
+    // 直接アクセス時はサンプル表示 (Pro なら全解放、未契約なら sales 無料)
     return {
       candidates: FALLBACK_ORDER.map((slug) => ({
         slug,
         ...CANDIDATE_META[slug],
         match: FALLBACK_MATCH[slug],
-        free: slug === "sales",
+        free: pro || slug === "sales",
       })),
       fallback: false,
     };
@@ -150,7 +154,7 @@ function buildDisplay(analysis: StoredCurrentAnalysis | null): BuildResult {
         slug,
         ...CANDIDATE_META[slug],
         match: FALLBACK_MATCH[slug],
-        free: slug === "sales",
+        free: pro || slug === "sales",
       })),
       fallback: true,
     };
@@ -159,7 +163,9 @@ function buildDisplay(analysis: StoredCurrentAnalysis | null): BuildResult {
   const topMatch = apiCandidates[0].match;
   const fallback = topMatch < MATCH_THRESHOLD;
 
-  // フォールバック時は sales を無料、そうでなければトップマッチを無料
+  // 非Pro:
+  //   フォールバック時 → sales を無料 / それ以外 → トップマッチを無料
+  // Pro: 全カード解放
   const freeSlug = fallback ? "sales" : apiCandidates[0].slug;
 
   // フォールバック時は sales を先頭に並べ替え
@@ -179,7 +185,7 @@ function buildDisplay(analysis: StoredCurrentAnalysis | null): BuildResult {
         c.kpis && c.kpis.length > 0 ? c.kpis : c.meta.metrics,
       match: c.match,
       reasoning: c.reasoning,
-      free: c.slug === freeSlug,
+      free: pro ? true : c.slug === freeSlug,
     })),
     fallback,
   };
@@ -189,9 +195,11 @@ export default function DashboardsPage() {
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(false);
   const [analysis, setAnalysis] = useState<StoredCurrentAnalysis | null>(null);
+  const [pro, setPro] = useState(false);
 
   useEffect(() => {
     setAnalysis(getCurrentAnalysis());
+    setPro(isPro());
 
     const totalMs = 2500;
     const interval = totalMs / ANALYZE_STEPS.length;
@@ -236,7 +244,7 @@ export default function DashboardsPage() {
           {!done ? (
             <AnalyzingPanel step={step} filename={analysis?.filename ?? null} />
           ) : (
-            <ResultsPanel analysis={analysis} />
+            <ResultsPanel analysis={analysis} pro={pro} />
           )}
         </div>
       </main>
@@ -314,12 +322,14 @@ function AnalyzingPanel({
 
 function ResultsPanel({
   analysis,
+  pro,
 }: {
   analysis: StoredCurrentAnalysis | null;
+  pro: boolean;
 }) {
   const { candidates, fallback } = useMemo(
-    () => buildDisplay(analysis),
-    [analysis]
+    () => buildDisplay(analysis, pro),
+    [analysis, pro]
   );
   const filename = analysis?.filename ?? null;
   const category = analysis?.output.category ?? null;
@@ -368,11 +378,20 @@ function ResultsPanel({
             <>列構造・統計から最適なビューを推定しています。</>
           )}
           {" "}
-          無料版では{" "}
-          <span className="font-medium text-foreground">
-            {freeCandidate?.title ?? "営業パイプライン"}
-          </span>{" "}
-          を閲覧できます。
+          {pro ? (
+            <>
+              <span className="font-medium text-foreground">Pro プラン</span>{" "}
+              のためすべてのダッシュボードを閲覧できます。
+            </>
+          ) : (
+            <>
+              無料版では{" "}
+              <span className="font-medium text-foreground">
+                {freeCandidate?.title ?? "営業パイプライン"}
+              </span>{" "}
+              を閲覧できます。
+            </>
+          )}
         </p>
       </div>
 
@@ -380,11 +399,12 @@ function ResultsPanel({
 
       <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {candidates.map((c) => (
-          <CandidateCard key={c.slug} candidate={c} />
+          <CandidateCard key={c.slug} candidate={c} pro={pro} />
         ))}
       </div>
 
-      <div className="mt-14 rounded-2xl border border-border bg-muted/30 p-6 sm:p-7">
+      {pro ? null : (
+        <div className="mt-14 rounded-2xl border border-border bg-muted/30 p-6 sm:p-7">
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-foreground text-background">
@@ -404,7 +424,8 @@ function ResultsPanel({
             <ArrowRight className="h-4 w-4" />
           </PricingButton>
         </div>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -427,7 +448,13 @@ function FallbackBanner() {
   );
 }
 
-function CandidateCard({ candidate }: { candidate: DisplayCandidate }) {
+function CandidateCard({
+  candidate,
+  pro,
+}: {
+  candidate: DisplayCandidate;
+  pro: boolean;
+}) {
   const Icon = candidate.icon;
 
   const inner = (
@@ -447,7 +474,12 @@ function CandidateCard({ candidate }: { candidate: DisplayCandidate }) {
         >
           <Icon className="h-5 w-5" />
         </div>
-        {candidate.free ? (
+        {pro ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-2.5 py-1 text-xs font-medium text-white">
+            <Sparkles className="h-3 w-3" />
+            Pro 解放済み
+          </span>
+        ) : candidate.free ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
             無料で閲覧
           </span>

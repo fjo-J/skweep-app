@@ -109,7 +109,17 @@ function computeCandidateScores(input: AnalysisInput): {
 
   const salesHits =
     Number(
-      matchAny(["商談", "受注", "リード", "deal", "opportunity", "pipeline"])
+      // ⚠️ "リード" 単体は "リードタイム" に誤ヒットするため除外し、
+      //    "リード数" や "lead " のような特異性のある形でのみ判定する
+      matchAny([
+        "商談",
+        "受注",
+        "リード数",
+        "見込み客",
+        "deal",
+        "opportunity",
+        "pipeline",
+      ])
     ) +
     Number(matchAny(["顧客", "client", "company", "account"])) +
     Number(matchAny(["金額", "amount", "price", "value"]));
@@ -165,8 +175,13 @@ function computeCandidateScores(input: AnalysisInput): {
 
   const prodHits =
     Number(matchAny(["工程", "process", "production"])) +
-    Number(matchAny(["予実", "plan", "actual"])) +
-    Number(matchAny(["歩留", "yield", "defect", "不良", "ロット"]));
+    Number(
+      // ⚠️ "予実" は "予定数"/"実績数" には部分一致しないため、個別キーワードを追加
+      matchAny(["予実", "plan", "actual", "予定", "実績"])
+    ) +
+    Number(matchAny(["歩留", "yield"])) +
+    Number(matchAny(["不良", "defect"])) +
+    Number(matchAny(["ロット", "lot"]));
 
   const toScore = (hits: number, base: number) =>
     Math.min(99, base + hits * 8 + Math.floor(Math.random() * 4));
